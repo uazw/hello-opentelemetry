@@ -1,0 +1,32 @@
+services:
+  helloworld:
+    image: eclipse-temurin:21
+    environment:
+      - OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf
+      - OTEL_EXPORTER_OTLP_METRICS_ENDPOINT=http://prometheus:9090/api/v1/otlp/v1/metrics
+      - OTEL_TRACES_EXPORTER=none
+      - OTEL_LOGS_EXPORTER=none
+      - OTEL_SERVICE_NAME="helloworld"
+      - OTEL_RESOURCE_ATTRIBUTES="service.instance.id=123"
+      - JAVA_TOOL_OPTIONS="-javaagent:/app/opentelemetry-javaagent.jar"
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./build/libs/hello-world-0.0.1-SNAPSHOT.jar:/app/helloworld.jar
+      - ./opentelemetry-javaagent-2.16.0.jar:/app/opentelemetry-javaagent.jar
+    working_dir: /app
+    command: java -jar helloworld.jar 
+    depends_on:
+      - prometheus
+
+  prometheus:
+    image: prom/prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - prometheus-data:/prometheus
+      - ./prometheus-otlp.yml:/prometheus/prometheus-otlp.yml
+    command: '--config.file=/prometheus/prometheus-otlp.yml --web.enable-otlp-receiver'
+
+volumes:
+  prometheus-data:
